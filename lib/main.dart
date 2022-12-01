@@ -1,6 +1,9 @@
+import 'dart:isolate';
+
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
 
 import './provider/image_provider.dart';
 import './pages/search_page.dart';
@@ -47,12 +50,15 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: ChangeNotifierProvider(
-        create: (_) {
-          var object = ImagesProvider();
-          object.localImageScanning();
-          return object;
-        },
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ImagesProvider()),
+          ChangeNotifierProvider(create: (_) {
+            final object = LocalImageScanning();
+            object.localImageScanning();
+            return object;
+          }),
+        ],
         child: SearchPage(),
       ),
     );

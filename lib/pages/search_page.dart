@@ -14,7 +14,7 @@ class SearchPage extends StatefulWidget {
 
 PreferredSize appBarBottom() {
   return PreferredSize(
-    preferredSize: Size.fromHeight(35),
+    preferredSize: Size.fromHeight(50),
     child: AppBarSearch(),
   );
 }
