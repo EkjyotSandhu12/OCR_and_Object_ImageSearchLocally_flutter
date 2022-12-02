@@ -10,26 +10,36 @@ import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:http/http.dart' as http;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:google_ml_kit/google_ml_kit.dart' as ml;
+import 'package:shared_preferences/shared_preferences.dart';
 
 int totalFiles = 0, scannedFiles = 0;
 
 List<Map<String, dynamic>> localImagesData = [];
 
-List<Uint8List> localImagesBytes = [];
+List<File> localImagesFiles = [];
 List<String> onlineImagesUrls = [];
 
 class ImagesProvider with ChangeNotifier {
-  List getImages() {
-    if (localImagesBytes.isEmpty) {
-      return onlineImagesUrls;
-    } else {
-      return localImagesBytes;
+
+
+  deleteLocalImageFile(File file){
+    if(localImagesFiles.contains(file)){
+      localImagesFiles.remove(file);
+      notifyListeners();
     }
   }
 
-  onlineImageSearch(String searchString) async {
+  List getImages() {
+    if (localImagesFiles.isEmpty) {
+      return onlineImagesUrls;
+    } else {
+      return localImagesFiles;
+    }
+  }
+
+  Future<void> onlineImageSearch(String searchString) async {
     onlineImagesUrls.clear();
-    localImagesBytes.clear();
+    localImagesFiles.clear();
 
     String url =
         "https://api.unsplash.com/search/photos?page=1&query=$searchString"
@@ -45,14 +55,14 @@ class ImagesProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  localImageSearch(String searchString) {
+  Future<void> localImageSearch(String searchString) async {
     onlineImagesUrls.clear();
-    localImagesBytes.clear();
+    localImagesFiles.clear();
 
     localImagesData.forEach((image) {
       if ((image['text'] as String).contains(searchString)) {
         File imageFile = image['file'] as File;
-        localImagesBytes.add(imageFile.readAsBytesSync());
+        localImagesFiles.add(imageFile);
       }
     });
 
@@ -61,7 +71,11 @@ class ImagesProvider with ChangeNotifier {
 }
 
 class LocalImageScanning with ChangeNotifier {
+
+
   localImageScanning() async {
+
+
     final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
         type: RequestType.image, hasAll: false);
 
@@ -69,16 +83,23 @@ class LocalImageScanning with ChangeNotifier {
       var photos = await folder.getAssetListRange(start: 0, end: 100);
       totalFiles += photos.length;
     });
+    print(totalFiles);
+
     scannedFiles = 0;
     await Future.forEach(paths, (folder) async {
+
       var photos = await folder.getAssetListRange(start: 0, end: 100);
       var textRecognizer = ml.GoogleMlKit.vision.textRecognizer();
       final ImageLabelerOptions options =
           ImageLabelerOptions(confidenceThreshold: 0.6);
       final imageLabeler = ImageLabeler(options: options);
 
+
       await Future.forEach(photos, (photo) async {
+
         File? photoFile = await photo.file;
+
+
         final InputImage inputImage = InputImage.fromFilePath(photoFile!.path);
 
         var recognizedText = await textRecognizer.processImage(inputImage);
@@ -94,7 +115,9 @@ class LocalImageScanning with ChangeNotifier {
 
         localImagesData.add({'file': photoFile, 'text': imageText});
         scannedFiles++;
+        print(scannedFiles);
         notifyListeners();
+
       });
 
       textRecognizer.close();

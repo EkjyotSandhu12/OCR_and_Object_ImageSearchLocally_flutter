@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
 
-
 import '../provider/image_provider.dart';
 
 class AppBarSearch extends StatefulWidget {
@@ -19,16 +18,19 @@ class _AppBarSearchState extends State<AppBarSearch>
 
   @override
   Widget build(BuildContext context) {
-
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.only(bottom: 8, right: 8, left: 8),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
+                  decoration: const InputDecoration(
+                    labelText: "search...",
+                  ),
+                  autofocus: false,
                   controller: textEditingController,
                 ),
               ),
@@ -52,11 +54,15 @@ class _AppBarSearchState extends State<AppBarSearch>
           height: 5,
         ),
         Consumer<LocalImageScanning>(
-          builder: (context, data, _) => LinearProgressIndicator(
-            color: Colors.white,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            value: data.getScannedProgress,
-          ),
+          builder: (context, data, _) =>
+              LinearProgressIndicator(
+                color:
+                    data.getScannedProgress == 1 ? Colors.green : Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                value: data.getScannedProgress,
+              ),
+
+
         ),
       ],
     );

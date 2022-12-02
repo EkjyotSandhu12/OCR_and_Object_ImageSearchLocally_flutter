@@ -1,15 +1,18 @@
 import 'dart:isolate';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_screen_lock/flutter_screen_lock.dart';
 
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 
 import './provider/image_provider.dart';
 import './pages/search_page.dart';
+import './pages/lock_screen.dart';
 
 void main() {
   runApp(MyApp());
+
 }
 
 class MyApp extends StatelessWidget {
@@ -17,6 +20,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -50,17 +54,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => ImagesProvider()),
-          ChangeNotifierProvider(create: (_) {
-            final object = LocalImageScanning();
-            object.localImageScanning();
-            return object;
-          }),
-        ],
-        child: SearchPage(),
-      ),
+      home: LockScreen(),
     );
   }
 }
