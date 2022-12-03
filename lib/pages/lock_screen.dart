@@ -62,11 +62,14 @@ class _LockScreenState extends State<LockScreen> {
       context: context,
       correctString: passCode,
       canCancel: true,
-      onUnlocked: () => Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => SearchPage(),
-        ),
-      ),
+      onUnlocked: () {
+        Navigator.of(context).pop();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => SearchPage(),
+          ),
+        );
+      }
     );
   }
 
