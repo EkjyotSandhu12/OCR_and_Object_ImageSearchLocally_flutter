@@ -26,14 +26,14 @@ class _SearchPageState extends State<SearchPage>
           ..addListener(() {
             setState(() {});
           });
-    sizeAnimation = Tween<double>(begin: 10, end: 60).animate(CurvedAnimation(
+    sizeAnimation = Tween<double>(begin: 10, end: 75).animate(CurvedAnimation(
         parent: _animationController, curve: Curves.fastOutSlowIn));
   }
 
   PreferredSize appBarBottom() {
     return PreferredSize(
       preferredSize: Size.fromHeight(sizeAnimation.value),
-      child: sizeAnimation.value < 58 ? Text("") : AppBarSearch(),
+      child: sizeAnimation.value < 74? Text("") : AppBarSearch(),
     );
   }
 
