@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:google_ml_kit/google_ml_kit.dart' as ml;
 import 'package:path_provider/path_provider.dart' as syspath;
+import 'package:path/path.dart' as path;
 
 int totalFiles = 0, scannedFiles = 0;
 
@@ -54,10 +55,10 @@ class ImagesProvider with ChangeNotifier {
   Future<void> localImageSearch(String searchString) async {
     onlineImagesUrls.clear();
     localImagesFiles.clear();
-
+    RegExp reg = RegExp(searchString, caseSensitive: false);
     localImagesData.forEach((image) {
-      if ((image['text'] as String).contains(searchString)) {
-        File imageFile = image['file'] as File;
+      if (reg.hasMatch(image['text'] as String)) {
+        File imageFile = File(image['file'] as String);
         localImagesFiles.add(imageFile);
       }
     });
@@ -67,70 +68,76 @@ class ImagesProvider with ChangeNotifier {
 }
 
 class LocalImageScanning with ChangeNotifier {
-  getFilesFromDirectory(File file) {}
-
   localImageScanning() async {
+
+    var textRecognizer = ml.GoogleMlKit.vision.textRecognizer();
+    final ImageLabelerOptions options =
+        ImageLabelerOptions(confidenceThreshold: 0.6);
+    final imageLabeler = ImageLabeler(options: options);
     Directory dir = await syspath.getApplicationDocumentsDirectory();
     File fileImage = File("${dir.path}/savedScannedFiles.json");
-    File fileFolder = File("${dir.path}/savedScannedFolders.json");
-    List<String> scannedFolders = [];
+    List<AssetEntity> images = [];  // images to be scanned right now
+    List<String> storedFilesPaths = []; //paths for files already scanned in device
 
-    if (fileFolder.existsSync()) {
-      List<dynamic> data = json.decode(fileFolder.readAsStringSync());
-      scannedFolders = data.map((e) {
-        return e.toString();
-      }).toList();
+    if (fileImage.existsSync()) {  //adding already scanned files to the app data
+      final data = fileImage.readAsStringSync();
+      final photos = json.decode(data) as List;
+      photos.forEach((photo) {
+        localImagesData.add(photo);
+      });
     }
+
+    //extracting path data from already scanned files
+    localImagesData.forEach((photo) {
+      storedFilesPaths.add(path.basename(photo['file'] as String));
+    });
 
     final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
         type: RequestType.image, hasAll: false);
 
-    final tempPath = paths.toList();
-    await Future.forEach(tempPath, (folder) async {
-      /*if (scannedFolders.contains(folder.name)) {
-        paths.remove(folder);
-      } else {*/
-        var photos = await folder.getAssetListRange(start: 0, end: 100);
-        totalFiles += photos.length;
-     // }
-    });
-
-    scannedFiles = 0;
+    //comparing paths and only adding those files to images variable which were not scanned
     await Future.forEach(paths, (folder) async {
       var photos = await folder.getAssetListRange(start: 0, end: 100);
-      var textRecognizer = ml.GoogleMlKit.vision.textRecognizer();
-      final ImageLabelerOptions options =
-          ImageLabelerOptions(confidenceThreshold: 0.6);
-      final imageLabeler = ImageLabeler(options: options);
 
-      await Future.forEach(photos, (photo) async {
-        File? photoFile = await photo.file;
-
-        final InputImage inputImage = InputImage.fromFilePath(photoFile!.path);
-
-        var recognizedText = await textRecognizer.processImage(inputImage);
-        String imageText = recognizedText.text;
-
-        final List<ImageLabel> labels =
-            await imageLabeler.processImage(inputImage);
-
-        for (ImageLabel label in labels) {
-          final String text = label.label;
-          imageText = imageText + " $text";
+      await Future.forEach(photos, (photo) {
+        if (!storedFilesPaths.contains(photo.title)) {
+          images.add(photo);
         }
-
-        localImagesData.add({'file': photoFile, 'text': imageText});
-        scannedFiles++;
-        notifyListeners();
       });
-
-      scannedFolders.add(folder.name);
-      // fileImage.writeAsStringSync(json.encode(localImagesData));
-      fileFolder.writeAsStringSync(json.encode(scannedFolders));
-
-      textRecognizer.close();
-      imageLabeler.close();
     });
+
+    int count = 0;
+    totalFiles = images.length;
+    print(totalFiles);
+    await Future.forEach(images, (photo) async {
+      File? photoFile = await photo.file;
+      final InputImage inputImage = InputImage.fromFilePath(photoFile!.path);
+
+      var recognizedText = await textRecognizer.processImage(inputImage);
+      String imageText = recognizedText.text;
+
+      final List<ImageLabel> labels =
+          await imageLabeler.processImage(inputImage);
+
+      for (ImageLabel label in labels) {
+        final String text = label.label;
+        imageText = imageText + " $text";
+      }
+
+      localImagesData.add({'file': photoFile.path, 'text': imageText});
+
+      if (count > 10) {
+        fileImage.writeAsStringSync(json.encode(localImagesData));
+        count = 0;
+      }
+      count++;
+      scannedFiles++;
+      print(scannedFiles);
+      notifyListeners();
+    });
+
+    textRecognizer.close();
+    imageLabeler.close();
   }
 
   double get getScannedProgress {
